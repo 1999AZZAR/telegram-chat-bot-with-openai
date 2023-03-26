@@ -1,6 +1,6 @@
 import openai
 import telegram
-import time
+import asyncio
 
 # Set up the OpenAI API client
 openai.api_key = "<your OpenAI API key>"
@@ -21,40 +21,46 @@ menu_keyboard = [
 ]
 menu = telegram.ReplyKeyboardMarkup(menu_keyboard)
 
-# Listen for incoming messages
-for update in bot.get_updates():
-    # Get the message text
-    message = update.message.text
+async def main():
+    # Listen for incoming messages
+    while True:
+        updates = await bot.get_updates()
 
-    # Check if the message is a command
-    if message == "/start":
-        is_running = True
-        bot.send_message(chat_id=update.message.chat_id, text="Bot started")
-    elif message == "/stop":
-        is_running = False
-        bot.send_message(chat_id=update.message.chat_id, text="Bot stopped")
-    elif message == "/menu":
-        # Send the menu keyboard
-        bot.send_message(chat_id=update.message.chat_id, text="Menu:", reply_markup=menu)
+        for update in updates:
+            # Get the message text
+            message = update.message.text
 
-    # If the bot is running, use the OpenAI API to generate a response
-    if is_running:
-        # Check the current time
-        current_time = time.localtime().tm_hour
+            # Check if the message is a command
+            if message == "/start":
+                is_running = True
+                bot.send_message(chat_id=update.message.chat_id, text="Bot started")
+            elif message == "/stop":
+                is_running = False
+                bot.send_message(chat_id=update.message.chat_id, text="Bot stopped")
+            elif message == "/menu":
+                # Send the menu keyboard
+                bot.send_message(chat_id=update.message.chat_id, text="Menu:", reply_markup=menu)
 
-        # If it's time for the daily reminder, send it
-        if current_time == reminder_time:
-            bot.send_message(chat_id=update.message.chat_id, text="Don't forget to take your medication!")
+            # If the bot is running, use the OpenAI API to generate a response
+            if is_running:
+                # Check the current time
+                current_time = time.localtime().tm_hour
 
-        response = openai.Completion.create(
-            engine="text-davinci-002",
-            prompt=message,
-            max_tokens=1024,
-            temperature=0.5
-        )
+                # If it's time for the daily reminder, send it
+                if current_time == reminder_time:
+                    bot.send_message(chat_id=update.message.chat_id, text="Don't forget to take your medication!")
 
-        # Send the response to the user
-        bot.send_message(chat_id=update.message.chat_id, text=response["choices"][0]["text"])
+                response = openai.Completion.create(
+                    engine="text-davinci-002",
+                    prompt=message,
+                    max_tokens=1024,
+                    temperature=0.5
+                )
 
-    # Pause for one day before checking the time again
-    time.sleep(86400)
+                # Send the response to the user
+                bot.send_message(chat_id=update.message.chat_id, text=response["choices"][0]["text"])
+
+        # Pause for one day before checking the time again
+        await asyncio.sleep(86400)
+
+asyncio.run(main())
